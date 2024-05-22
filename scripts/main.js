@@ -117,8 +117,10 @@ async function addElements(buildIds, token) {
             let buildRowQuery = `a[href$="buildId=${build.id}"]`;
             let buildTagColQuery = "td[data-column-index=1] > div.bolt-table-cell-content > div.stage-cell > div.flex-row"
             waitForElements(buildRowQuery, function(builds){
-                builds.first().addClass('table-cell-ext-gen-tags-mod');
-                waitForChildElements(builds.first(), buildTagColQuery, function(cols) {
+                // Find the parent row first
+                let buildRow = builds.first().closest("tr[role=row]");
+                buildRow.addClass('table-cell-ext-gen-tags-mod');
+                waitForChildElements(buildRow, buildTagColQuery, function(cols) {
                     let buildTagsCol = cols.first();
 
                     let existingTooltip = buildTagsCol.children('.ext-gen-tags-tooltip');
@@ -153,11 +155,12 @@ function bindToNewBuilds() {
 }
 
 chrome.storage.local.get(['ado_token'], function(result){
-    let rowQuery = "table.runs-table > tbody > a[role=row]";
+    let rowQuery = "table.runs-table > tbody > tr[role=row] > td[role=gridcell] > div.bolt-table-cell-content-with-inline-link > div.flex-column > div.flex-row > a.bolt-link";
 
     // ADO Token exists in local storage
     if("ado_token" in result)
     {
+        console.debug("ADO Token exists in local storage")
         waitForElements(rowQuery, function(rows){
             addElements(extractBuildIds(rows), result.ado_token);
             bindToNewBuilds();
@@ -168,6 +171,7 @@ chrome.storage.local.get(['ado_token'], function(result){
     // ADO token needs to be loaded from cookies
     else 
     {
+        console.debug("ADO token needs to be loaded from cookies")
         chrome.runtime.sendMessage({domain: "https://dev.azure.com/*", name: "UserAuthentication"}, function(cookie) {
             oauth_token = cookie.value;
             chrome.storage.local.set({ado_token: cookie.value}, function(){
